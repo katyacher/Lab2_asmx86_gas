@@ -1,25 +1,26 @@
 .file "main.s"
-.section .rodata
-    .Lc0: .ascii "%lf %lf\0" # форматная строка с нулевым байтом в конце строки
+.global main
+
+.data
+    x: .double 0.0
+    .balign 8
+    a: .double 0.0
+    .balign 8
+    s: .string "\n"
+    .Lc0: .ascii "%lf %lf\0" 	# форматная строка с нулевым байтом в конце строки
     .Lc1: .ascii "x = %f\0" 
     .Lc2: .ascii "a = %f\0" 
-    .Lc3: .ascii "%s\0"
-    
-.data
-    x: .float .0
-    a: .float .0
-    s: .string "\n"
+    .Lc3: .ascii "%s"
 .text
   
-.global main
 main:
     xorq %rdi,%rdi
     xorq %rsi,%rsi
     
-    pushq %rbp 	# для выравнивания стека по 16-байтовой границе
-    movq %rsp, %rbp 	# для создания фрейма стека ф-ии main
+    pushq %rbp 		# для выравнивания стека по 16-байтовой границе
+    movq %rsp, %rbp 		# для создания фрейма стека ф-ии main
     
-    subq $32, %rsp 		# выделить в стеке 32 байта перед вызовом функции
+    subq $48, %rsp 		# выделить в стеке 32 байта перед вызовом функции
     
     leaq .Lc0(%rip), %rdi 	# адрес начала форматной строки
     leaq x(%rip), %rsi		#адрес сохранения введённой строки
@@ -27,8 +28,10 @@ main:
     movq $2, %rax
     callq scanf 		# вызов функции scanf
     
+    xorq %rax, %rax
     leaq .Lc1(%rip), %rdi 	# адрес начала форматной строки
-    movq x(%rip), %rsi		#само выводимое значение x = 
+    movq x(%rip), %xmm0	#само выводимое значение x = 
+    movq $1, %rax
     callq printf		#вызов функции printf
     
     leaq .Lc3(%rip), %rdi 	# адрес начала форматной строки
@@ -36,7 +39,7 @@ main:
     callq printf		#вызов функции printf
     
     leaq .Lc2(%rip), %rdi 	# адрес начала форматной строки
-    movq a(%rip), %rsi		#само выводимое значение a = 
+    movq a(%rip), %xmm0	# само выводимое значение a = 
     callq printf		#вызов функции printf
     
     leaq .Lc3(%rip), %rdi 	# адрес начала форматной строки
