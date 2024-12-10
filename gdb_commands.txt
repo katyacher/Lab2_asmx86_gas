@@ -1,0 +1,7 @@
+# команды gdb:
+break metka
+run
+i r - info registers
+disassemble
+stepi
+

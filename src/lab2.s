@@ -48,125 +48,108 @@
 .text
 .global main
 main:
-	movq %rsp, %rbp 	# сохраняем начальное значение указателя стека в rbp
+    movq %rsp, %rbp 	# сохраняем начальное значение указателя стека в rbp
 	
-	# выведем строку msg на экран
-	movq $1, %rax 		# sys_write
-	movq $1, %rdi 		# стандартная консоль
-	movq $msg, %rsi 	# адрес начала строки
-	movq $29, %rdx 	# кол-во выводимых символов
-	syscall
+    # выведем строку msg на экран
+    movq $1, %rax 		# sys_write
+    movq $1, %rdi 		# стандартная консоль
+    movq $msg, %rsi 	# адрес начала строки
+    movq $29, %rdx 	# кол-во выводимых символов
+    syscall
 	
-	# выведем строку msg_arg_x на экран
-	movq $1, %rax 		# write
-	movq $1, %rdi 		# стандартная консоль
-	movq $msg_arg_x, %rsi 	# адрес начала строки
-	movq $18, %rdx 	# кол-во выводимых символов
-	syscall
-	
+    # выведем строку msg_arg_x на экран
+    movq $1, %rax 		# write
+    movq $1, %rdi 		# стандартная консоль
+    movq $msg_arg_x, %rsi 	# адрес начала строки
+    movq $18, %rdx 	# кол-во выводимых символов
+    syscall
 		
-	push %rbp           	# keep stack aligned
-    	leaq .Lc0(%rip), %rdi 	# адрес начала форматной строки
-    	leaq x(%rip), %rsi	# адрес сохранения введённой строки
-    	movq $1, %rax		# кол-во регистров xmmn
-    	callq scanf 		# вызов функции scanf
-   	pop %rbp		
+    push %rbp           	# keep stack aligned
+    leaq .Lc0(%rip), %rdi 	# адрес начала форматной строки
+    leaq x(%rip), %rsi	# адрес сохранения введённой строки
+    movq $1, %rax		# кол-во регистров xmmn
+    callq scanf 		# вызов функции scanf
+    pop %rbp		
 				
-	# выведем строку msg_arg_a на экран
-	movq $1, %rax 		# write
-	movq $1, %rdi 		# стандартная консоль
-	movq $msg_arg_a, %rsi 	# адрес начала строки
-	movq $18, %rdx 	# кол-во выводимых символов
-	syscall
-	
+    # выведем строку msg_arg_a на экран
+    movq $1, %rax 		# write
+    movq $1, %rdi 		# стандартная консоль
+    movq $msg_arg_a, %rsi 	# адрес начала строки
+    movq $18, %rdx 	# кол-во выводимых символов
+    syscall
 		
-	push %rbp           	# keep stack aligned
-    	movq  $1, %rax       	# clear AL (zero FP args in XMM registers)
-    	leaq .Lc0(%rip), %rdi  	# адрес начала форматной строки
-    	leaq a(%rip), %rsi  	# адрес сохранения введённой строки
-    	call scanf		# считаем число в переменную a
-   	pop %rbp		
+    push %rbp           	# keep stack aligned
+    movq  $1, %rax       	# clear AL (zero FP args in XMM registers)
+    leaq .Lc0(%rip), %rdi  	# адрес начала форматной строки
+    leaq a(%rip), %rsi  	# адрес сохранения введённой строки
+    call scanf		# считаем число в переменную a
+    pop %rbp		
     
-	# выполним вычисление y = y1/y2 при следующих параметрах:
-	# y1 = 15+x, если x > 7, |a| + 9, если x<=7;
-	# y2 = 3, если x>2, |x| - 5, если x <= 2;
-	xorq %rcx, %rcx
-	movq $9, %rcx	# TODO задаем сетчик цикла, проверить регистр
+    # выполним вычисление y = y1/y2 при следующих параметрах:
+    # y1 = 15+x, если x > 7, |a| + 9, если x<=7;
+    # y2 = 3, если x>2, |x| - 5, если x <= 2;
+    xorq %rcx, %rcx
+    movq $9, %rcx	# задаем сетчик цикла
+m:# для отладки # FPU	
+    finit
+    fld x 	# st(1) = x
 	
-	finit
-	fld x 	# st(1) = x
-# FPU		
 main_loop:
-	#вычислим у2
-	
-	fld num2 	# st(0) = 2.0
-		
-	#fcomip %st(0), %st(1)      # сравнивает ST(0) и ST(1), устанавливает биты состояния FLAGS и извлекает верхний элемент (ST(0)) из стека. 
-	fcomp 
-	fstsw  %ax 
-	sahf
-    	jnb arg2       # если st(0) >= st(1), 2 >= x или x<=2
-    	fstp %st(0)	# удалить x из st(0)
-	fld num3 	# st(0) = 3 = y2 		
-	arg2:
-	fabs		# st(0) = |x|
-    	fsub num5 	# st(0) = |x|-5 = y2 
-    	
-	#вычислим у1	st(2) = y2
-	fldl x		# st(1) = x
-	fldl num7	# st(0) = 7.0
-	#fcomipl %st(0), %st(1) 
-	fcomp 
-	fstsw %ax 
-	sahf
-	jnb arg1       # если st(0) >= st(1), x<=7
-	fadd num15 	# st(0) = 15.0, st(1) = x
+    #вычислим у2
+    fld num2 	# st(0) = 2.0
+    #fcomip %st(0), %st(1)      # сравнивает ST(0) и ST(1), устанавливает биты состояния FLAGS и извлекает верхний элемент (ST(0)) из стека. 
+    fcomp
+    xorq %rax, %rax
+    fstsw  %ax 
+    sahf
+    jnb arg2       # если st(0) >= st(1), 2 >= x или x<=2
+    fstp %st(0)	# удалить x из st(0)
+    fld num3 	# st(0) = 3 = y2 
+    jmp y1		
+    arg2:
+    fabs		# st(0) = |x|
+    fsub num5 	# st(0) = |x|-5 = y2 
+  
+    y1:
+    #вычислим у1	st(2) = y2
+    fldl x		# st(1) = x
+    fldl num7	# st(0) = 7.0
+    fcomp 
+    xorq %rax, %rax
+    fstsw %ax 
+    sahf
+    jnb arg1       # если st(0) >= st(1), x<=7
+    fadd num15 	# st(0) = 15.0, st(1) = x
 	 		# st(0) = 15 + x = y1
-	arg1:
-	fstp %st(0)	# удалить x
-	fldl a
-	fabs		#|a|
-	fadd  num9	#|a| + 9 = st(0) = y1
+    jmp div1
+    arg1:
+    fstp %st(0)	# удалить x
+    fldl a
+    fabs		#|a|
+    fadd  num9	#|a| + 9 = st(0) = y1
 			
+    div1:
+    #выполнить деление у1/у2 # st(0) = 0, st(1) = y1, st(2) = y2		
+    fldl num0
+    #fcomipl %st(2)		# ftst проверка на ноль в делителе
+    fcomp %st(2) 
+    xorq %rax, %rax 
+    fstsw %ax 
+    sahf
+    jz div_by_zero
+    fdiv %st(0), %st(1)			# st(0) = st(0)/st(1)
+    fstpl result
+    #вывести на экран
+    jmp res
 
-	#выполнить деление у1/у2 # st(0) = 0, st(1) = y1, st(2) = y2		
-	fldl num0
-	#fcomipl %st(2)		# ftst проверка на ноль в делителе
-	fcomp 
-	fstsw %ax 
-	sahf
-	je div_by_zero
-	fdivr st, st(1)			# st(0) = st(0)/st(1) ??
-	fstpl result
-	
-	#вывести на экран
-	jmp res
-	
-	div_by_zero: 		# вывод сообщения об ошибке msg_div_by_zero
-		movq $1, %rax 			# sys_write
-		movq $1, %rdi 			# std<<cout
-		movq $msg_div_by_zero, %rsi 	# адрес начала строки
-		movq $24, %rdx 		# кол-во выводимых символов
-		syscall
-		
-		jmp exit		#завершение программы
-		
-##############################################################################	
-#
-#	#выполнить деление - отрицательные числа ???
-#	movq $0, %rdx		# очистим регистр rdx - необязательно, далее перед #делением
-#	cmpq $0, %rbx		# проверка на ноль в делителе
-#	je div_by_zero
-#	movq $0, %rdx		# обнулить rdx перед делением (для положительных чисел #важно)
-#	cmpq $0, %rax 		# проверить, отрицательное ли делимое
-#	jge div1		# если делимое >= 0, выполняем деление
-#		notq %rdx	#  если делимое < 0 - инвертировать биты в rdx
-#	div1:
-#	idiv %rbx		# выполним целочисленное деление для чисел со знаком  -#x/y
-#	movq %rax, %r13	# сохраним промежуточный результат в регистр %r13
-#	movq %rdx, %r9		# сохраним остаток от деления в r9 - необязательно
-#	
-##############################################################################
+    div_by_zero: 		# вывод сообщения об ошибке msg_div_by_zero
+	movq $1, %rax 			# sys_write
+	movq $1, %rdi 			# std<<cout
+	movq $msg_div_by_zero, %rsi 	# адрес начала строки
+	movq $24, %rdx 		# кол-во выводимых символов
+	syscall
+	jmp exit		#завершение программы
+
     # выведем результат на экран	
     res:
     # выведем на экран переменные
@@ -195,6 +178,7 @@ main_loop:
     subq $8, %rsp           # выравнивание должно быть по 16 байтам
     movq $msg_res, %rdi     # "y = "  форматная строка
     movq $1, %rax 	     # кол-во регистров xmmn
+    movq result(%rip), %xmm0
     call printf
     addq $8, %rsp
    
@@ -208,12 +192,20 @@ main_loop:
     cmpq $0, %rcx
     jz exit
     # увеличить x на 1
+    finit
     fldl x 	# st(1) = x
     fadd num1 	#fld1   	# st(0) = x + 1
     # сохранить в x
     # fstp x
     # перейти на начало цикла
     jmp main_loop
-
+##################или так ########################    
+    #   finit
+    #fldl x 	# st(1) = x
+    #fadd num1 	#fld1   	# st(0) = x + 1
+    # сохранить в x
+    # fst x
+    #loopq main_loop
+##################################################
 exit:	
-    ret
+    retq
