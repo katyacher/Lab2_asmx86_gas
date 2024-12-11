@@ -2,6 +2,8 @@
 break metka
 run
 i r - info registers
+i r f - print all FPU floating registers (st0-7 and a few other f*)
+i r a - all
 disassemble
 stepi
 
