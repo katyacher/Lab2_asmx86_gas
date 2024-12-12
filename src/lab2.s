@@ -38,7 +38,7 @@
     msg_arg_x: .ascii "Input number: x = "
     msg_arg_a: .ascii "Input number: a = "
     msg_div_by_zero: .ascii "Error: division by zero\n"
-    msg_res: .ascii "y = %.3lf\0 "
+    msg_res: .ascii "y = %lf\0 "
     s: .string "\n"
     .Lc0: .ascii "%lf\0" # форматная строка спецификатор .double с нулевым байтом 
     .Lc1: .ascii "x = %lf\0" 
@@ -48,11 +48,11 @@
 .text
 .global main
 main:
-    xorq %rdi,%rdi
-    xorq %rsi,%rsi
+    #xorq %rdi,%rdi
+    #xorq %rsi,%rsi
     pushq %rbp 
     movq %rsp, %rbp 	# сохраняем начальное значение указателя стека в rbp
-     subq $48, %rsp
+  
     # выведем строку msg на экран
     movq $1, %rax 		# sys_write
     movq $1, %rdi 		# стандартная консоль
@@ -93,9 +93,9 @@ main:
     # y2 = 3, если x>2, |x| - 5, если x <= 2;
     xorq %rcx, %rcx
     movq $9, %rcx	# задаем сетчик цикла
-m:# для отладки # FPU	
-   
-	
+    movq %rcx, %r15
+
+   	
 main_loop:
     #вычислим у2
     finit
@@ -109,7 +109,7 @@ main_loop:
     sahf
     jge arg2       	# если st(0) > st(1), 2 >= x или x<=2
     fabs		# st(0) = |x|
-    fsub %st(1), %st(0)		# st(0) = |x|-5 = y2 
+    fsubp %st(0), %st(1)		# st(0) = |x|-5 = y2 
     jmp y1		
     arg2:
     finit
@@ -127,26 +127,27 @@ main_loop:
     fstsw %ax 
     sahf
     jge arg1       	# если st(0) >= st(1), x<=7
+    fldl num15			# st(0) = 15.0, st(1) = x
+    faddp  %st(0), %st(1)	# st(0) = 15 + x = y1
+    jmp div1
+    arg1:
     fstp %st(0)	# удалить x
     fldl a
     fabs		#|a|
     fldl num9
-    fadd %st(1), %st(0)	#|a| + 9 = st(0) = y1
-    jmp div1
-    arg1:
-    fldl num15			# st(0) = 15.0, st(1) = x
-    fadd  %st(1), %st(0)	# st(0) = 15 + x = y1
-	 				
+    faddp %st(0), %st(1)	#|a| + 9 = st(0) = y1
+   
+ 				
     div1:
     #выполнить деление у1/у2 # st(0) = 0, st(1) = y1, st(2) = y2		
     fldl num0
-    # ftst проверка на ноль в st(0)
+    # ftst проверка на ноль в делителе
     fcomp %st(2) 
     xorq %rax, %rax 
     fstsw %ax 
     sahf
     jz div_by_zero
-    fdiv %st(0), %st(1)			# st(0) = st(0)/st(1)
+    fdiv %st(1), %st(0)			# st(1) = st(0)/st(1)
     fstpl result
     #вывести на экран
     jmp res
@@ -162,52 +163,89 @@ main_loop:
     # выведем результат на экран	
     res:
     # выведем на экран переменные
-    #pushq %rbp  	
+    pushq %rbp
+   # movq %rsp, %rbp 	# сохраняем начальное значение указателя стека в rbp
+    pushq %rcx  	
     xorq %rax, %rax
+    movq $1, %rax              #1 регистр xmm0
     leaq .Lc1(%rip), %rdi 	# адрес начала форматной строки
-    movq x(%rip), %xmm0	#само выводимое значение x = 
-    movq $1, %rax
+    movq x(%rip), %rsi		#само выводимое значение x = 
     callq printf		#вызов функции printf
+    addq  $8, %rsp
+    popq  %rcx 
     
-    leaq .Lc3(%rip), %rdi 	# адрес начала форматной строки
-    leaq s(%rip), %rsi		#само выводимое значение \n
-    callq printf		#вызов функции printf
     
+   # pushq %rcx  
+    #xorq %rax, %rax
+    #leaq .Lc3(%rip), %rdi 	# адрес начала форматной строки
+    #leaq s(%rip), %rsi		# само выводимое значение \n
+   # callq printf		# вызов функции printf
+   # addq  $8, %rsp
+    #popq  %rcx             #восстановить регистр             
+ 
+           
+    pushq %rcx              # сохранить регистр
+    pushq $s  # напечатать символ новой строки     
+    call  printf
+    addq  $8, %rsp
+    popq  %rcx             #восстановить регистр             
+ m1:
+    pushq %rcx   
+    xorq %rax, %rax
     leaq .Lc2(%rip), %rdi 	# адрес начала форматной строки
-    movq a(%rip), %xmm0	# само выводимое значение a = 
+    movq a(%rip), %rsi	# само выводимое значение a = 
     callq printf		#вызов функции printf
-    
+    addq  $16, %rsp          # выровнять стек  
+    popq  %rcx             #восстановить регистр             
+ 
+    pushq %rcx 
+    xorq %rax, %rax
     leaq .Lc3(%rip), %rdi 	# адрес начала форматной строки
     leaq s(%rip), %rsi		#само выводимое значение \n
     callq printf		#вызов функции printf
-    
-    
+    addq  $8, %rsp
+    popq  %rcx 
     
     # выведем на экран результат
+    pushq %rbp
+    #movq %rsp, %rbp
     #subq $8, %rsp           # выравнивание должно быть по 16 байтам
-    movq $msg_res, %rdi     # "y = "  форматная строка
-    movq $1, %rax 	     # кол-во регистров xmmn
-    movq result(%rip), %xmm0
+    #pushq %rcx 
+    xorq %rax, %rax
+    leaq msg_res(%rip), %rdi     # "y = "  форматная строка
+    movq $1, %rax 	    	 # кол-во регистров xmmn
+    movq result(%rip), %rsi
     call printf
-    #addq $8, %rsp
-   
+    addq  $8, %rsp          # выровнять стек  
+    popq  %rcx 
+    
+    pushq %rcx 
+    xorq %rax, %rax
     leaq .Lc3(%rip), %rdi 	# адрес начала форматной строки
     leaq s(%rip), %rsi		# само выводимое значение \n
     callq printf		# вызов функции printf
-
-	 
+    addq  $8, %rsp          # выровнять стек   
+    popq %rcx 
+    
+   # movq %rbp, %rsp 	# восстанавливаем стек
+    popq %rbp
+    
+m:# для отладки  
+   
     # уменьшить счетчик, проверить выход из цикла
-    subq $1, %rcx		
-    cmpq $0, %rcx
-    jz exit
+    #movq $1, %rcx
+    subq $1, %r15		
+    cmpq $0, %r15
+    je exit
     finit	
     fldl x 	# st(1) = x
-    fld1	# st(0) = x
-    fadd %st(1), %st(0) 	# st(0) = x + 1  увеличить x на 1
+    fld1	# st(0) = 1
+    faddp %st(0), %st(1) 	# st(0) = x + 1  увеличить x на 1
     fstpl x			# сохранить в x
     jmp main_loop		# перейти на начало цикла
 
 exit:	
     movq %rbp, %rsp
-    popq %rbp
-    retq
+    movq $60, %rax 	# exit
+    movq $0, %rdi
+    syscall
